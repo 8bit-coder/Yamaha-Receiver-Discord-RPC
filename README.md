@@ -24,11 +24,11 @@ I've done extensive testing on two different receivers (Yamaha RX-A730 & Yamaha 
 
  - Mute functionality is incomplete as it's only detected when the volume is lowered to "mute", not when the mute button is pressed on the remote. Otherwise, it will keep displaying the current volume even when muted.
  - Sometimes, the "time elapsed" counter on the Discord status will reset to 00:00 and begin counting up again. This is most likely due to the receiver sending bad data and causing a reset of the cached playback data.
- - The program will crash if you turn off your receiver and back on.
+ - The program will crash if you turn your receiver off and back on.
 
 If you find a bug that isn't mentioned above, please create an issue in the repository so I can look into fixing it. I will add debug logging to the program soon so you can send a debug log to help fixing problems. Also, I have no idea if this program works on Mac OS and Linux as I have only tested it on Windows 10 and 11. It theoretically should, but I have no guarantees. If you can, please make an issue describing how it performs on your platform.
 
-## Planned features
+# Planned features
 
  - [ ] Add functionality for detecting when a song is on repeat and display it accordingly.
  - [ ] Add full mute detection functionality.

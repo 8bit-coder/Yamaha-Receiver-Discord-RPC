@@ -1,5 +1,7 @@
 ﻿# Yamaha Receiver Discord RPC Client [![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/) [![pypresence](https://img.shields.io/badge/using-pypresence-00bb88.svg?style=for-the-badge&logo=discord&logoWidth=20)](https://github.com/qwertyquerty/pypresence) [![Latest release](https://badgen.net/github/release/Naereen/Strapdown.js)](https://github.com/8bit-coder/Yamaha-Receiver-Discord-RPC/releases)  [![Windows](https://svgshare.com/i/ZhY.svg)](https://svgshare.com/i/ZhY.svg) [![GPLv3 license](https://img.shields.io/badge/License-GPLv3-blue.svg)](http://perso.crans.org/besson/LICENSE.html)
-![Demo 1](https://cdn.discordapp.com/attachments/815992022992945212/1036661001417928720/unknown.png)![Demo 2](https://cdn.discordapp.com/attachments/815992022992945212/1036662253845479594/unknown.png)![Demo 3](https://cdn.discordapp.com/attachments/815992022992945212/1036663985132548187/unknown.png)
+![Demo 1](https://cdn.discordapp.com/attachments/815992022992945212/1036661001417928720/unknown.png)
+![Demo 2](https://cdn.discordapp.com/attachments/815992022992945212/1036663985132548187/unknown.png)
+
 This program allows Discord users with a network-capable Yamaha receiver to display their currently playing music in the Rich Presence format. I wrote this after searching Google and finding absolutely nothing that would allow me to show the playback of my Yamaha receiver as my Discord status(similar to my friends showing Spotify or Apple Music). I ended up writing my own API of sorts to deal with getting information from the receiver and putting it into the custom Discord developer application I made.
 
 ##  Features

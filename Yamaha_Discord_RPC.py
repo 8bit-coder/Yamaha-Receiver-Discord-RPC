@@ -21,8 +21,8 @@ receiverIP = open("config.txt", "r")
 clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 curSong = ""
-currentSource = ""
 prevSource = ""
+currentSource = ""
 prevSong = ""
 defaultText = " - "
 idleText = "Playback Stopped"
@@ -128,10 +128,9 @@ class YamahaAPI:
                 if str(curData[i]).replace("\r\n","") == "@MAIN:INP=":
                     return self.cacheSource
                 else:
-                    currentSource = str(curData[i]).replace("\r\n","").replace("@MAIN:INP=","")
-                    self.cacheSource = currentSource
-                    self.mode = currentSource.upper()
-                return currentSource
+                    self.cacheSource = str(curData[i]).replace("\r\n","").replace("@MAIN:INP=","")
+                    self.mode = self.cacheSource.upper()
+                return str(curData[i]).replace("\r\n","").replace("@MAIN:INP=","")
         return(self.cacheSource)
 
     def GetVolume(self):

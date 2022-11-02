@@ -44,27 +44,18 @@ class YamahaAPI:
         
     def UpdateData(self):
         if self.mode == "PANDORA":
-            data = "@" + self.mode + ":TRACK=?"+"\r\n"
-            clientSocket.send(data.encode())
+            sendData = "@" + self.mode + ":TRACK=?"+"\r\n"
         else:
-            data = "@" + self.mode + ":SONG=?"+"\r\n"
-            clientSocket.send(data.encode())
-        data = "@" + self.mode + ":ARTIST=?"+"\r\n"
-        clientSocket.send(data.encode())
-        data = "@" + self.mode + ":ALBUM=?"+"\r\n"
-        clientSocket.send(data.encode())
-        data = "@" + self.mode + ":PLAYBACKINFO=?"+"\r\n"
-        clientSocket.send(data.encode())
-        data = "@SYS:MODELNAME=?"+"\r\n"
-        clientSocket.send(data.encode())
-        data = "@MAIN:INP=?"+"\r\n"
-        clientSocket.send(data.encode())
-        data = "@MAIN:VOL=?"+"\r\n"
-        clientSocket.send(data.encode())
-        data = "@MAIN:STRAIGHT=?"+"\r\n"
-        clientSocket.send(data.encode())
-        data = "@MAIN:SOUNDPRG=?"+"\r\n"
-        clientSocket.send(data.encode())
+            sendData = "@" + self.mode + ":SONG=?"+"\r\n"
+        sendData = sendData + "@" + self.mode + ":ARTIST=?"+"\r\n"
+        sendData = sendData + "@" + self.mode + ":ALBUM=?"+"\r\n"
+        sendData = sendData + "@" + self.mode + ":PLAYBACKINFO=?"+"\r\n"
+        sendData = sendData + "@SYS:MODELNAME=?"+"\r\n"
+        sendData = sendData + "@MAIN:INP=?"+"\r\n"
+        sendData = sendData + "@MAIN:VOL=?"+"\r\n"
+        sendData = sendData + "@MAIN:STRAIGHT=?"+"\r\n"
+        sendData = sendData + "@MAIN:SOUNDPRG=?"+"\r\n"
+        clientSocket.send(sendData.encode())
         receiveData = clientSocket.recv(1024)
         returnedStrings = receiveData.decode().replace("\r","").split("\n")
         self.data = returnedStrings
@@ -134,8 +125,12 @@ class YamahaAPI:
         curData = self.data
         for i in range(len(curData)):
             if str(curData[i]).replace("\r\n","").startswith("@MAIN:INP="):
-                currentSource = str(curData[i]).replace("\r\n","").replace("@MAIN:INP=","")
-                self.mode = currentSource.upper()
+                if str(curData[i]).replace("\r\n","") == "@MAIN:INP=":
+                    return self.cacheSource
+                else:
+                    currentSource = str(curData[i]).replace("\r\n","").replace("@MAIN:INP=","")
+                    self.cacheSource = currentSource
+                    self.mode = currentSource.upper()
                 return currentSource
         return(self.cacheSource)
 
@@ -181,7 +176,7 @@ RPC = Presence(client_id)
 RPC.connect()
 
 while True:
-    time.sleep(0.25)
+    time.sleep(0.05)
 
     Receiver.UpdateData()
     playbackStatus = Receiver.GetPlaybackStatus()

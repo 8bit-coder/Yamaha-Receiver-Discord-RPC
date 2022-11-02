@@ -1,6 +1,8 @@
 ﻿# Yamaha Receiver Discord RPC Client [![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/) [![pypresence](https://img.shields.io/badge/using-pypresence-00bb88.svg?style=for-the-badge&logo=discord&logoWidth=20)](https://github.com/qwertyquerty/pypresence) [![Latest release](https://badgen.net/github/release/Naereen/Strapdown.js)](https://github.com/8bit-coder/Yamaha-Receiver-Discord-RPC/releases)  [![Windows](https://svgshare.com/i/ZhY.svg)](https://svgshare.com/i/ZhY.svg) [![GPLv3 license](https://img.shields.io/badge/License-GPLv3-blue.svg)](http://perso.crans.org/besson/LICENSE.html)
+![Demo 1](https://cdn.discordapp.com/attachments/815992022992945212/1036661001417928720/unknown.png)
+![Demo 2](https://cdn.discordapp.com/attachments/815992022992945212/1036663985132548187/unknown.png)
 
-This program allows Discord users with a network-capable Yamaha receiver to display their currently playing music in the Rich Presence format. I wrote this after searching Google and finding absolutely nothing that would allow me to show the playback of my Yamaha receiver as my Discord status. I ended up writing my own API of sorts to deal with getting information from the receiver and putting it into the custom Discord developer application I made.
+This program allows Discord users with a network-capable Yamaha receiver to display their currently playing music in the Rich Presence format. I wrote this after searching Google and finding absolutely nothing that would allow me to show the playback of my Yamaha receiver as my Discord status(similar to my friends showing Spotify or Apple Music). I ended up writing my own API of sorts to deal with getting information from the receiver and putting it into the custom Discord developer application I made.
 
 ##  Features
 
@@ -15,15 +17,17 @@ This program allows Discord users with a network-capable Yamaha receiver to disp
        non-network source (HDMI1, AUDIO1, etc.)
 
 # Setup
-First, head to the "releases" tab on this repository and download the latest release. Unzip it and place it in a folder that is easy to access. The program comes with a file called config.txt. This file is meant for users to put their receiver's IP address into the first line. By default, it comes preconfigured with the IP `192.168.1.143` which will **not** work and will require you to change to your own receiver's IP. To find your receiver's IP, follow the steps listed on the [Yamaha Website](https://faq.yamaha.com/usa/s/article/U0007526)(this will work for any networked receiver, not just the RX-V673). Once you've found the IP, simply replace the one in the config.txt file with your receiver's IP. 
+First, make sure you have python installed on your system. If you don't already have it installed, click on the big red "made with Python" badge at the top of this README to download and install the latest version.
+
+Then, head to the "releases" tab on this repository and download the latest release. Unzip it and place it in a folder that is easy to access. The program comes with a file called config.txt. This file is meant for users to put their receiver's IP address into the first line. By default, it comes preconfigured with the IP `192.168.1.143` which will **not** work and will require you to change to your own receiver's IP. To find your receiver's IP, follow the steps listed on the [Yamaha Website](https://faq.yamaha.com/usa/s/article/U0007526)(this will work for any networked receiver, not just the RX-V673). Once you've found the IP, simply replace the one in the config.txt file with your receiver's IP. 
 
 Next, you will need to download pypresence. This is done by executing **`pip install pypresence`** in command prompt. Once that's installed and your receiver's IP is configured, you are ready to launch and use the program!
 
 ## Known Bugs / Issues
-I've done extensive testing on two different receivers (Yamaha RX-A730 & Yamaha RX-V673) and have found a few issues. 
+I've done extensive testing on three different receivers that I own(RX-A730, RX-V673, and RX-A660) and have found a few issues. 
 
  - Mute functionality is incomplete as it's only detected when the volume is lowered to "mute", not when the mute button is pressed on the remote. Otherwise, it will keep displaying the current volume even when muted.
- - Sometimes, the "time elapsed" counter on the Discord status will reset to 00:00 and begin counting up again. This is most likely due to the receiver sending bad data and causing a reset of the cached playback data.
+ - Sometimes, the "time elapsed" counter on the Discord status will reset to 00:00 and begin counting up again. This is most likely due to the update rate not being fast enough to detect every time that a song starts over, so it inconsistently resets the playback counter.
  - The program will crash if you turn your receiver off and back on.
 
 If you find a bug that isn't mentioned above, please create an issue in the repository so I can look into fixing it. I will add debug logging to the program soon so you can send a debug log to help fixing problems. Also, I have no idea if this program works on Mac OS and Linux as I have only tested it on Windows 10 and 11. It theoretically should, but I have no guarantees. If you can, please make an issue describing how it performs on your platform.

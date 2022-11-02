@@ -7,27 +7,21 @@ class YamahaAPI:
     def __init__(self, ip):
         clientSocket.connect((ip,50000))
 
-Receiver = YamahaAPI("192.168.1.131")
+Receiver = YamahaAPI("192.168.1.143")
 
-input = AIRPLAY
+inputName = "SERVER"
 
 while 1:
-    data = "@" + input + ":SONG=?"+"\r\n"
+    data = "@" + inputName + ":SONG=?"+"\r\n"
+    data = data + "@" + inputName + ":ARTIST=?"+"\r\n"
+    data = data + "@" + inputName + ":ALBUM=?"+"\r\n"
+    data = data + "@SYS:MODELNAME=?"+"\r\n"
+    data = data + "@MAIN:INP=?"+"\r\n"
+    data = data + "@MAIN:VOL=?"+"\r\n"
+    data = data + "@MAIN:STRAIGHT=?"+"\r\n"
+    data = data + "@MAIN:SOUNDPRG=?"+"\r\n"
     clientSocket.send(data.encode())
-    data = "@" + input + ":ARTIST=?"+"\r\n"
-    clientSocket.send(data.encode())
-    data = "@" + input + ":ALBUM=?"+"\r\n"
-    clientSocket.send(data.encode())
-    data = "@SYS:MODELNAME=?"+"\r\n"
-    clientSocket.send(data.encode())
-    data = "@MAIN:INP=?"+"\r\n"
-    clientSocket.send(data.encode())
-    data = "@MAIN:VOL=?"+"\r\n"
-    clientSocket.send(data.encode())
-    data = "@MAIN:STRAIGHT=?"+"\r\n"
-    clientSocket.send(data.encode())
-    data = "@MAIN:SOUNDPRG=?"+"\r\n"
-    clientSocket.send(data.encode())
-    time.sleep(0.1)
+    time.sleep(0.05)
     receiveData = clientSocket.recv(1024)
-    print(receiveData)
+    dataInfo = str(receiveData.decode()).replace("\r","").split("\n")
+    print(dataInfo)

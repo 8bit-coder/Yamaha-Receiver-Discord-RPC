@@ -41,6 +41,7 @@ class YamahaAPI:
         self.cacheSoundProgram = defaultText
         self.cacheSource = defaultText
         self.cachePlaybackStatus = "Play"
+        self.cacheInputName = defaultText
         
     def UpdateData(self):
         if self.mode == "PANDORA":
@@ -55,6 +56,8 @@ class YamahaAPI:
         sendData = sendData + "@MAIN:VOL=?"+"\r\n"
         sendData = sendData + "@MAIN:STRAIGHT=?"+"\r\n"
         sendData = sendData + "@MAIN:SOUNDPRG=?"+"\r\n"
+        if self.cacheSource.startswith("HDMI"):
+            sendData = sendData + "@SYS:INPNAME" + self.cacheSource + "=?"+"\r\n"
         clientSocket.send(sendData.encode())
         receiveData = clientSocket.recv(1024)
         returnedStrings = receiveData.decode().replace("\r","").split("\n")
@@ -112,6 +115,21 @@ class YamahaAPI:
                     self.cacheModel = curData[i].replace("@SYS:MODELNAME=","")
                     return(curData[i].replace("@SYS:MODELNAME=",""))
         return(self.cacheModel)
+
+    def GetInputName(self):
+        curData = self.data
+        for i in range(len(curData)):
+            if curData[i].startswith("@SYS:INPNAME"):
+                if curData[i] == "@SYS:INPNAME" + self.cacheSource + "=":
+                    return(self.cacheInputName)
+                else:
+                    tempInputName = curData[i].replace("@SYS:INPNAME" + self.cacheSource + "=","")
+                    if tempInputName.startswith("@SYS:INPNAME"):
+                        return self.cacheInputName
+                    else:
+                        self.cacheInputName = tempInputName
+                        return(tempInputName)
+        return(self.cacheInputName)
 
     def GetPlaybackStatus(self):
         curData = self.data
@@ -182,7 +200,7 @@ while True:
     
     prevSong = curSong
     prevSource = currentSource
-    curSong,modelInfo,currentSource,currentVolume,currentSoundProgram = Receiver.GetCurSong(),Receiver.GetModel(), Receiver.SourceDetect(), Receiver.GetVolume(), Receiver.GetSoundProgram()
+    curSong,modelInfo,currentSource,currentVolume,currentSoundProgram,inputName = Receiver.GetCurSong(),Receiver.GetModel(), Receiver.SourceDetect(), Receiver.GetVolume(), Receiver.GetSoundProgram(), Receiver.GetInputName()
 
     if currentSource == "Pandora":
         curArtist = Receiver.GetCurAlbum()
@@ -196,4 +214,7 @@ while True:
     if currentSource == "Pandora" or currentSource == "Rhapsody" or currentSource == "SiriusXM" or currentSource == "Pandora" or currentSource == "Spotify" or currentSource == "AirPlay" or currentSource == "SERVER" or currentSource == "USB":
         RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + currentSource + " " + str(currentVolume), details=curSong, state=curArtist, start=start_time)
     else:
-        RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + str(currentVolume), details=currentSource, state=currentSoundProgram, start=start_time)
+        if inputName != currentSource and currentSource.startswith("HDMI"):
+            RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + str(currentVolume), details=currentSource + ": " + inputName, state=currentSoundProgram, start=start_time)
+        else:
+            RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + str(currentVolume), details=currentSource, state=currentSoundProgram, start=start_time)

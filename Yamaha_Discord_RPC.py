@@ -195,7 +195,10 @@ RPC.connect()
 while True:
     time.sleep(0.05)
 
-    Receiver.UpdateData()
+    try:
+        Receiver.UpdateData()
+    except Exception:
+        pass
     playbackStatus = Receiver.GetPlaybackStatus()
     
     prevSong = curSong
@@ -211,7 +214,7 @@ while True:
         start_time=time.time()
         Receiver.ResetPlaybackCache()
 
-    if currentSource == "Pandora" or currentSource == "Rhapsody" or currentSource == "SiriusXM" or currentSource == "Pandora" or currentSource == "Spotify" or currentSource == "AirPlay" or currentSource == "SERVER" or currentSource == "USB":
+    if currentSource == "Pandora" or currentSource == "Rhapsody" or currentSource == "SiriusXM" or currentSource == "Pandora" or currentSource == "Spotify" or currentSource == "AirPlay" or currentSource == "SERVER" or currentSource == "PC" or currentSource == "USB":
         RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + currentSource + " " + str(currentVolume), details=curSong, state=curArtist, start=start_time)
     else:
         if inputName != currentSource and currentSource.startswith("HDMI"):

@@ -80,7 +80,7 @@ class YamahaAPI:
         Returns: Frequency in kHz, e.g., "1130"
     - PLAYBACKINFO:
         Description: Playback status
-        Returns: "Play" or "Stop"
+        Returns: "Play" or "Stop" (or "Pause" for Bluetooth)
     - MODELNAME:
         Description: The model number, e.g., "TSR-7790" or "RX-A820"
     - SOUNDPRG:
@@ -259,8 +259,8 @@ class YamahaAPI:
         prevInput = self.dataDictionary.get("INP")
         curElapsedTime = TimeStringToInt(self.volatileDataDictionary.get("ELAPSEDTIME"))
         prevElapsedTime = TimeStringToInt(self.dataDictionary.get("ELAPSEDTIME"))
-        
-        if curSong != prevSong or curPlaybackStatus != prevPlaybackStatus or curInput != prevInput or (curElapsedTime > 0 and curElapsedTime < prevElapsedTime):
+
+        if curPlaybackStatus != prevPlaybackStatus or curSong != prevSong or curInput != prevInput or (curElapsedTime > 0 and curElapsedTime < prevElapsedTime):
             self.dataDictionary.clear()
             self.lastChangeTimestamp = time.time()
         

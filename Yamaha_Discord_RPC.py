@@ -33,10 +33,13 @@ while True:  # The main loop to keep the program running.
     currentInput = Receiver.GetData("inp", defaultText)
     currentInputName = Receiver.GetData("inpname", defaultText)
     currentModel = Receiver.GetData("modelname", defaultText)
-    currentVolume = Receiver.GetData("vol", defaultText)
-    currentMute = Receiver.GetData("mute", defaultText)
+    currentVolume = Receiver.GetData("vol", defaultText)   
     currentSoundProgram = Receiver.GetData("soundprg", defaultText)
     playbackStart = Receiver.LastChangeTimestamp()
+    if currentVolume == "-80.5":
+        currentMute = "On"
+    else:
+        currentMute = Receiver.GetData("mute", defaultText)
     
     # Initialize text variables for Discord Rich Presence.
     hoverText = defaultText
@@ -58,7 +61,7 @@ while True:  # The main loop to keep the program running.
         playingStatus = Receiver.GetData("playbackinfo", defaultText)
         
         # Determine the text to display based on playback status and source details.
-        if playingStatus == "Stop":
+        if playingStatus == "Stop" or playingStatus == "Pause":
             hoverText = f'{currentModel}: {currentVolume}dB'
             firstLine = f'{currentInput}'
             secondLine = f'Playback Stopped'

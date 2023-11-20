@@ -41,7 +41,9 @@ while True: #program runs forever
     firstLine = defaultText
     secondLine = defaultText
     
-    if Receiver.GetData("puredirmode") == "On": #if the receiver is on pure direct mode, ignore the sound program
+    if currentMute == "On":
+        currentSoundProgram = "Receiver Muted"
+    elif Receiver.GetData("puredirmode") == "On": #if the receiver is on pure direct mode, ignore the sound program
         currentSoundProgram = "Pure Direct Mode"
     elif Receiver.GetData("straight") == "On": #same thing if the receiver is on straight mode
         currentSoundProgram = "DSP Passthrough"
@@ -71,7 +73,7 @@ while True: #program runs forever
     
     elif currentInputName != currentInput: #if there is a custom input name
         hoverText = f'{currentModel}: {currentVolume}dB'
-        firstLine = f'{currentInput}: {currentInputName}'
+        firstLine = f'{currentInput} - {currentInputName}'
         secondLine = f'{currentSoundProgram}'
     
     elif currentInputName == "TUNER": #if the radio tuner is being used
@@ -97,14 +99,9 @@ while True: #program runs forever
             firstLine = f'{currentInput}' 
             secondLine = f'{currentSoundProgram}'
     else:
-        if currentMute == "On":
-            hoverText = f'{currentModel}: {currentVolume}dB'
-            firstLine = f'{currentInput}'
-            secondLine = f'Receiver Muted'
-        else:
-            hoverText = f'{currentModel}: {currentVolume}dB'
-            firstLine = f'{currentInput}'
-            secondLine = f'{currentSoundProgram}'
+        hoverText = f'{currentModel}: {currentVolume}dB'
+        firstLine = f'{currentInput}'
+        secondLine = f'{currentSoundProgram}'
     
     #finally, send the data over to discord
     discordRPC.update(large_image="yamaha-logo-light", large_text=hoverText, details=firstLine, state=secondLine, start=playbackStart, buttons=rpcButton)

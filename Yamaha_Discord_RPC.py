@@ -6,7 +6,7 @@ with open("config.txt", "r") as configFile:
     receiverIP = configFile.read()
 
 # List of sources that support detailed information like song and artist names.
-detailedSources = ["Pandora", "Rhapsody", "SiriusXM", "Spotify", "AirPlay", "SERVER", "USB", "PC", "NET RADIO"]
+detailedSources = ["Pandora", "Rhapsody", "SiriusXM", "Spotify", "AirPlay", "SERVER", "USB", "PC", "NET RADIO", "Bluetooth"]
 
 # Default text to display when no data is available.
 defaultText = " - "

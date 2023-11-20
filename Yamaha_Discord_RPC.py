@@ -1,223 +1,110 @@
-# Discord RPC Client for Network-Enabled Yamaha Receivers
-# By Patrog Azadfekr (8bit_coder)
-#
-# TODO: Add functionality for detecting when a song is on repeat (eg. "@SERVER:REPEAT=?") ((ALSO make sure to only count repeats past the first play, this is done
-# via a check that interprets the @?SERVER:SONG= command that executes every time a new song plays
-# TODO: Add full mute detection functionality (eg. "@MAIN:MUTE=?")
-# TODO: Add functionality for displaying album art??
-# TODO: Add playcount tracking
-# TODO: Add a configuration file for customizability(similar in style to wxllow/applemusicRP)
-# TODO: Add optional "By" string in the second field (remember Pandora does things differently)
-# TODO: Add funtionality for detecting advanced input names via @SYS:INPNAMEHDMI1=? and etc
-# TODO: Add funtionality for detecting when receiver is turned off(to prevent socket errors and to quit the program0
-# TODO: Get rid of initSource requirement and just detect the source at program startup
-
 from pypresence import Presence
-import socket
-import time
+from YamahaAPI import YamahaAPI
 
-receiverIP = open("config.txt", "r")
+#open the config file, read the ip from it, and close the file
+with open("config.txt", "r") as configFile:
+    receiverIP = configFile.read()
 
-clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#these are the sources that support song and artist names
+detailedSources = ["Pandora", "Rhapsody", "SiriusXM", "Spotify", "AirPlay", "SERVER", "USB", "PC", "NET RADIO"]
 
-curSong = ""
-prevSource = ""
-currentSource = ""
-prevSong = ""
+#the text to display when there is no data (to prevent pyPresence from crashing)
 defaultText = " - "
-idleText = "Playback Stopped"
-initSource = "Server"
 
-class YamahaAPI:
-    def __init__(self, ip, source):
-        clientSocket.connect((ip,50000))
-        self.data = [""]
-        self.cacheSong = idleText
-        self.cacheArtist = defaultText
-        self.cacheAlbum = defaultText
-        self.cacheModel = defaultText
-        self.mode = source
-        self.cacheVolume = -40.0
-        self.cacheSoundProgram = defaultText
-        self.cacheSource = defaultText
-        self.cachePlaybackStatus = "Play"
-        self.cacheInputName = defaultText
-        
-    def UpdateData(self):
-        if self.mode == "PANDORA":
-            sendData = "@" + self.mode + ":TRACK=?"+"\r\n"
-        else:
-            sendData = "@" + self.mode + ":SONG=?"+"\r\n"
-        sendData = sendData + "@" + self.mode + ":ARTIST=?"+"\r\n"
-        sendData = sendData + "@" + self.mode + ":ALBUM=?"+"\r\n"
-        sendData = sendData + "@" + self.mode + ":PLAYBACKINFO=?"+"\r\n"
-        sendData = sendData + "@SYS:MODELNAME=?"+"\r\n"
-        sendData = sendData + "@MAIN:INP=?"+"\r\n"
-        sendData = sendData + "@MAIN:VOL=?"+"\r\n"
-        sendData = sendData + "@MAIN:STRAIGHT=?"+"\r\n"
-        sendData = sendData + "@MAIN:SOUNDPRG=?"+"\r\n"
-        if self.cacheSource.startswith("HDMI"):
-            sendData = sendData + "@SYS:INPNAME" + self.cacheSource + "=?"+"\r\n"
-        clientSocket.send(sendData.encode())
-        receiveData = clientSocket.recv(1024)
-        returnedStrings = receiveData.decode().replace("\r","").split("\n")
-        self.data = returnedStrings
-        # return returnedStrings
+#the button displayed under the rich presence info
+rpcButton = [{"label": "Have a Yamaha Receiver?", "url": "https://github.com/8bit-coder/Yamaha-Receiver-Discord-RPC"}]
 
-    def GetCurSong(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if self.mode == "PANDORA" or self.mode == "SPOTIFY":
-                if curData[i].startswith("@" + self.mode + ":TRACK="):
-                    if curData[i] == "@" + self.mode + ":TRACK=":
-                        return(self.cacheSong)
-                    else:
-                        self.cacheSong = curData[i].replace("@" + self.mode + ":TRACK=","")
-                        return(curData[i].replace("@" + self.mode + ":TRACK=",""))
-            else:
-                if curData[i].startswith("@" + self.mode + ":SONG="):
-                    if curData[i] == "@" + self.mode + ":SONG=":
-                        return(self.cacheSong)
-                    else:
-                        self.cacheSong = curData[i].replace("@" + self.mode + ":SONG=","")
-                        return(curData[i].replace("@" + self.mode + ":SONG=",""))
-        return(self.cacheSong)
+#create a Yamaha receiver object with the IP and zone
+Receiver = YamahaAPI(receiverIP, zone=1)
 
-    def GetCurArtist(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if curData[i].startswith("@" + self.mode + ":ARTIST="):
-                if curData[i] == "@" + self.mode + ":ARTIST=":
-                    return(self.cacheArtist)
-                else:
-                    self.cacheArtist = curData[i].replace("@" + self.mode + ":ARTIST=","")
-                    return(curData[i].replace("@" + self.mode + ":ARTIST=",""))
-        return(self.cacheArtist)
+#connect to the discord developer application ID
+discordRPC = Presence("1035741925468291134")
+discordRPC.connect()
 
-    def GetCurAlbum(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if curData[i].startswith("@" + self.mode + ":ALBUM="):
-                if curData[i] == "@" + self.mode + ":ALBUM=":
-                    return(self.cacheAlbum)
-                else:
-                    self.cacheAlbum = curData[i].replace("@" + self.mode + ":ALBUM=","")
-                    return(curData[i].replace("@" + self.mode + ":ALBUM=",""))
-        return(self.cacheAlbum)
+while True: #program runs forever
+    try: #failsafe incase socket craps out
+        Receiver.UpdateData(0.25)
+    except Exception as e:
+        print(f"Error updating data: {e}")
 
-    def GetModel(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if curData[i].startswith("@SYS:MODELNAME="):
-                if curData[i] == "@SYS.MODELNAME=":
-                    return(self.cacheModel)
-                else:
-                    self.cacheModel = curData[i].replace("@SYS:MODELNAME=","")
-                    return(curData[i].replace("@SYS:MODELNAME=",""))
-        return(self.cacheModel)
-
-    def GetInputName(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if curData[i].startswith("@SYS:INPNAME"):
-                if curData[i] == "@SYS:INPNAME" + self.cacheSource + "=":
-                    return(self.cacheInputName)
-                else:
-                    tempInputName = curData[i].replace("@SYS:INPNAME" + self.cacheSource + "=","")
-                    if tempInputName.startswith("@SYS:INPNAME"):
-                        return self.cacheInputName
-                    else:
-                        self.cacheInputName = tempInputName
-                        return(tempInputName)
-        return(self.cacheInputName)
-
-    def GetPlaybackStatus(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if curData[i] == ("@" + self.mode + ":PLAYBACKINFO=Play"):
-                return True
-            if curData[i] == ("@" + self.mode + ":PLAYBACKINFO=Stop"):
-                return False
-
-    def SourceDetect(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if str(curData[i]).replace("\r\n","").startswith("@MAIN:INP="):
-                if str(curData[i]).replace("\r\n","") == "@MAIN:INP=":
-                    return self.cacheSource
-                else:
-                    self.cacheSource = str(curData[i]).replace("\r\n","").replace("@MAIN:INP=","")
-                    self.mode = self.cacheSource.upper()
-                return str(curData[i]).replace("\r\n","").replace("@MAIN:INP=","")
-        return(self.cacheSource)
-
-    def GetVolume(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if curData[i].startswith("@MAIN:VOL="):
-                if curData[i] == "@MAIN:VOL=":
-                    return(self.cacheVolume)
-                else:
-                    if curData[i].replace("@MAIN:VOL=","") == "-80.5":
-                        self.cacheVolume = "Mute"
-                        return("Mute")
-                    else:
-                        self.cacheVolume = curData[i].replace("@MAIN:VOL=","") + "dB"
-                        return(curData[i].replace("@MAIN:VOL=","") + "dB")
-        return(self.cacheVolume)
-
-    def ResetPlaybackCache(self):
-        self.cacheSong = idleText
-        self.cacheArtist = defaultText
-        self.cacheAlbum = defaultText
-
-    def GetSoundProgram(self):
-        curData = self.data
-        for i in range(len(curData)):
-            if curData[i].startswith("@MAIN:STRAIGHT=On"):
-                self.cacheSoundProgram = "Straight"    
-                return("Straight")
-            if curData[i].startswith("@MAIN:SOUNDPRG="):
-                if curData[i] == "@MAIN:SOUNDPRG=":
-                    return(self.cacheSoundProgram)
-                else:
-                    self.cacheSoundProgram = curData[i].replace("@MAIN:SOUNDPRG=","")    
-                    return(curData[i].replace("@MAIN:SOUNDPRG=",""))
-            
-        return(self.cacheSoundProgram)
-
-Receiver = YamahaAPI(receiverIP.read(), initSource.upper())
-
-client_id = "1035741925468291134"
-RPC = Presence(client_id)
-RPC.connect()
-
-while True:
-    time.sleep(0.05)
-
-    try:
-        Receiver.UpdateData()
-    except Exception:
-        pass
-    playbackStatus = Receiver.GetPlaybackStatus()
+    #gather data
+    currentInput = Receiver.GetData("inp", defaultText)
+    currentInputName = Receiver.GetData("inpname", defaultText)
+    currentModel = Receiver.GetData("modelname", defaultText)
+    currentVolume = Receiver.GetData("vol", defaultText)
+    currentMute = Receiver.GetData("mute", defaultText)
+    currentSoundProgram = Receiver.GetData("soundprg", defaultText)
+    playbackStart = Receiver.LastChangeTimestamp()
     
-    prevSong = curSong
-    prevSource = currentSource
-    curSong,modelInfo,currentSource,currentVolume,currentSoundProgram,inputName = Receiver.GetCurSong(),Receiver.GetModel(), Receiver.SourceDetect(), Receiver.GetVolume(), Receiver.GetSoundProgram(), Receiver.GetInputName()
-
-    if currentSource == "Pandora":
-        curArtist = Receiver.GetCurAlbum()
-    else:
-        curArtist = Receiver.GetCurArtist()
+    #these three lines will be what will be sent to discord
+    hoverText = defaultText
+    firstLine = defaultText
+    secondLine = defaultText
+    
+    if Receiver.GetData("puredirmode") == "On": #if the receiver is on pure direct mode, ignore the sound program
+        currentSoundProgram = "Pure Direct Mode"
+    elif Receiver.GetData("straight") == "On": #same thing if the receiver is on straight mode
+        currentSoundProgram = "DSP Passthrough"
+    
+    if currentInput in detailedSources: #if the source supports it, display song and artist title
+        currentSong = Receiver.GetData("song", defaultText)
+        currentArtist = Receiver.GetData("artist", defaultText)
+        playingStatus = Receiver.GetData("playbackinfo", defaultText)
         
-    if curSong != prevSong or playbackStatus == False or currentSource != prevSource:
-        start_time=time.time()
-        Receiver.ResetPlaybackCache()
-
-    if currentSource == "Pandora" or currentSource == "Rhapsody" or currentSource == "SiriusXM" or currentSource == "Pandora" or currentSource == "Spotify" or currentSource == "AirPlay" or currentSource == "SERVER" or currentSource == "PC" or currentSource == "USB":
-        RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + currentSource + " " + str(currentVolume), details=curSong, state=curArtist, start=start_time)
-    else:
-        if inputName != currentSource and currentSource.startswith("HDMI"):
-            RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + str(currentVolume), details=currentSource + ": " + inputName, state=currentSoundProgram, start=start_time)
+        if playingStatus == "Stop": #if the source is stopped
+            hoverText = f'{currentModel}: {currentVolume}dB'
+            firstLine = f'{currentInput}'
+            secondLine = f'Playback Stopped'
+        elif currentMute == "On": #if the source is playing but is muted
+            hoverText = f'{currentModel}: {currentInput} {currentVolume}dB'
+            firstLine = f'Receiver Muted'
+            secondLine = f'{defaultText}'
         else:
-            RPC.update(large_image="yamaha-logo-light", large_text=modelInfo + ": " + str(currentVolume), details=currentSource, state=currentSoundProgram, start=start_time)
+            hoverText = f'{currentModel}: {currentInput} {currentVolume}dB'
+            firstLine = f'{currentSong}'
+            
+            if currentInput == "NET RADIO": #if the source is net radio, second line should be station since no artist is reported
+                currentStation = Receiver.GetData("station", defaultText)
+                secondLine = f'{currentStation}'
+            else:
+                secondLine = f'{currentArtist}'
+    
+    elif currentInputName != currentInput: #if there is a custom input name
+        hoverText = f'{currentModel}: {currentVolume}dB'
+        firstLine = f'{currentInput}: {currentInputName}'
+        secondLine = f'{currentSoundProgram}'
+    
+    elif currentInputName == "TUNER": #if the radio tuner is being used
+        currentTunerBand = Receiver.GetData("band", defaultText)
+
+        hoverText = f'{currentModel}: {currentVolume}dB'
+        
+        if currentTunerBand.upper() == "AM":
+            firstLine = f'AM Radio'
+            
+            try:
+                secondLine = f'{float(Receiver.GetData("amfreq")):0.0f} kHz'
+            except ValueError: #this is if the receiver reports something other than numbers
+                secondLine = f'Unknown Frequency' 
+        elif currentTunerBand.upper() == "FM":
+            firstLine = f'FM Radio'
+            
+            try:
+                secondLine = f'{float(Receiver.GetData("fmfreq")):0.1f} MHz'
+            except ValueError: #once again, this is if the receiver reports something other than numbers
+                secondLine = f'Unknown Frequency' 
+        else: #failsafes incase the receiver doesn't even report the band
+            firstLine = f'{currentInput}' 
+            secondLine = f'{currentSoundProgram}'
+    else:
+        if currentMute == "On":
+            hoverText = f'{currentModel}: {currentVolume}dB'
+            firstLine = f'{currentInput}'
+            secondLine = f'Receiver Muted'
+        else:
+            hoverText = f'{currentModel}: {currentVolume}dB'
+            firstLine = f'{currentInput}'
+            secondLine = f'{currentSoundProgram}'
+    
+    #finally, send the data over to discord
+    discordRPC.update(large_image="yamaha-logo-light", large_text=hoverText, details=firstLine, state=secondLine, start=playbackStart, buttons=rpcButton)

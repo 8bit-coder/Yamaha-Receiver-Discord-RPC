@@ -3,15 +3,14 @@ import time
 import re
 
 defaultInput = "SERVER"  # Default input source.
+endData = "\r\n" # End of line character for network requests.
 
-# Function to format network requests for the Yamaha receiver.
+# Function to format network get requests for the Yamaha receiver.
 # requestType: Type of request (e.g., 'zone', 'system', 'source').
 # request: Specific request command (e.g., 'SONG', 'ARTIST').
 # inputName: Name of the input source, defaults to 'SERVER'.
 # zone: The zone of the receiver, defaults to 'MAIN'.
 def RequestFormer(requestType, request, inputName = "SERVER", zone = "MAIN"): 
-    endData = "\r\n"  # End of line character for network requests.
-    
     match requestType:  # Python 3.10+ match-case statement for different request types.
         case "zone":
             return f"@{zone}:{request}=?".upper() + endData
@@ -146,6 +145,8 @@ class YamahaAPI:
         
         self.lastChangeTimestamp = time.time()  # Timestamp of the last significant data change.
 
+        self.userRequestData = "" # String for user-defined value writes
+
         # Determine the zone based on the provided zone number.
         match zone:
             case 1:
@@ -187,8 +188,11 @@ class YamahaAPI:
         # Cap the refresh rate.
         requestDelay = max(0.025, refreshInterval)
 
+        # Prep the request data string with the user's requested data
+        sendData = self.userRequestData
+        self.userRequestData = ""
+
         # Building the request data string based on the current input and zone.
-        sendData = ""
         if self.zone == "MAIN":
             # Different data requests for different input types.
             if curInput in ["PANDORA", "SPOTIFY"]:
@@ -299,7 +303,38 @@ class YamahaAPI:
         else:
             return self.dataDictionary.get(request.upper(), defaultString)
     
-    # Returns the timestamp of the last significant change.
+    def SendData(self, requestType, attribute, value, inputName = "SERVER", zone = "MAIN"):
+        """
+        Formats and sends network set requests to the Yamaha receiver.
+
+        This function allows control over various aspects of the Yamaha receiver by sending 
+        formatted requests. It supports adjusting settings in different zones, system-wide settings, 
+        or specific source inputs.
+
+        Args:
+            requestType (str): Type of request, determining the target of the command. 
+                            Acceptable values include 'zone', 'system', or 'source'.
+            attribute (str): The setting to be changed, such as 'INP' (input), 'VOL' (volume), 
+                            or 'PWR' (power).
+            value (str): The value to assign to the specified attribute. Examples include 'HDMI1' 
+                        for input, 'Down 5 dB' for volume adjustment, or 'On' for power state.
+            inputName (str, optional): Name of the input to be adjusted when 'source' is the 
+                                    requestType. Defaults to 'SERVER'.
+            zone (str, optional): The zone in which the setting will be changed when 'zone' is 
+                                the requestType. Defaults to 'MAIN'.
+
+        Returns:
+            None: This function does not return a value but sends a formatted command to the 
+                Yamaha receiver.
+        """
+        match requestType:
+            case "zone":
+                self.userRequestData += f"@{zone}:{attribute}=".upper() + value + endData
+            case "system":
+                self.userRequestData += f"@SYS:{attribute}=".upper() + value + endData
+            case "source":
+                self.userRequestData += f"@{inputName}:{attribute}=".upper() + value + endData
+        
     def LastChangeTimestamp(self):
         """
         Returns the timestamp of the last significant change in data.

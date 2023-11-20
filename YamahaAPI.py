@@ -2,139 +2,152 @@ import socket
 import time
 import re
 
-#this formats the requests to be in the form of "@SERVER:SONG=?\r\n", mainly to reduce clutter
-def RequestFormer(requestType, request, inputName = "SERVER", zone = "MAIN"): 
-    endData = "\r\n"
-    
-    match requestType:
-        case "zone":
-            return str("@" + zone + ":" + request + "=?").upper() + endData
-        case "system":
-            return str("@SYS:" + request + "=?").upper() + endData
-        case "source":
-            return str("@" + inputName + ":" + request + "=?").upper() + endData
+defaultInput = "SERVER"  # Default input source.
 
-#this takes a string in the form of "1:03" and converts it to integer 63
+# Function to format network requests for the Yamaha receiver.
+# requestType: Type of request (e.g., 'zone', 'system', 'source').
+# request: Specific request command (e.g., 'SONG', 'ARTIST').
+# inputName: Name of the input source, defaults to 'SERVER'.
+# zone: The zone of the receiver, defaults to 'MAIN'.
+def RequestFormer(requestType, request, inputName = "SERVER", zone = "MAIN"): 
+    endData = "\r\n"  # End of line character for network requests.
+    
+    match requestType:  # Python 3.10+ match-case statement for different request types.
+        case "zone":
+            return f"@{zone}:{request}=?".upper() + endData
+        case "system":
+            return f"@SYS:{request}=?".upper() + endData
+        case "source":
+            return f"@{inputName}:{request}=?".upper() + endData
+
+# Converts a time string (e.g., '1:03') to an integer (total seconds).
+# timeString: String representation of time, formatted as 'minutes:seconds'.
 def TimeStringToInt(timeString):
     time = 0
     
     try:
-        timeList = timeString.split(":")
-        time = (int(timeList[0]) * 60) + int(timeList[1])
+        timeList = timeString.split(":")  # Splits the time string into minutes and seconds.
+        time = (int(timeList[0]) * 60) + int(timeList[1])  # Converts to total seconds.
         
-        return(time)
-    except Exception:
-        return(time)
+        return time
+    except Exception:  # Catch any conversion error.
+        return time
 
-class YamahaAPI:
+# Class representing the Yamaha API for network communication.
+class YamahaAPI:    
     """
-    This API allows for requesting information from a network-enabled Yamaha receiver.
+    A class to interface with a networked Yamaha Receiver, providing methods to request and process data.
+
+    List of Requestable Data (Case Insensitive):
+
+    Any Zone:
+    - INP:
+        Description: Current input
+    - INPNAME:
+        Description: Current input name
+    - ZONENAME:
+        Description: Current zone name
+    - PWR:
+        Description: Power state of zone
+        Returns: "On" or "Off"
+    - SLEEP:
+        Description: Sleep timer
+        Returns: "Off", "120", "90", "60", or "30" in minutes
+    - VOL:
+        Description: Current zone volume
+        Returns: Volume in dB, ranging from -80.5 to 16.5
+    - MUTE:
+        Description: Mute status
+        Returns: "On" or "Off"
+
+    Main Zone:
+    - SONG:
+        Description: Song name
+    - ARTIST:
+        Description: Artist name
+    - ALBUM:
+        Description: Album name
+    - STATION:
+        Description: Net Radio Station
+    - BAND:
+        Description: Tuner band
+        Returns: "FM" or "AM"
+    - FMFREQ:
+        Description: FM Radio Frequency
+        Returns: Frequency in MHz, e.g., "104.70"
+    - AMFREQ:
+        Description: AM Radio Frequency
+        Returns: Frequency in kHz, e.g., "1130"
+    - PLAYBACKINFO:
+        Description: Playback status
+        Returns: "Play" or "Stop"
+    - MODELNAME:
+        Description: The model number, e.g., "TSR-7790" or "RX-A820"
+    - SOUNDPRG:
+        Description: Sound program
+        Returns: Current sound program, e.g., 7ch Stereo
+    - STRAIGHT:
+        Description: Sound program bypass toggle
+        Returns: "On" or "Off"
+    - PUREDIRMODE:
+        Description: Pure direct mode
+        Returns: "On" or "Off"
+    - PARTY:
+        Description: Party mode toggle
+        Returns: "On" or "Off"
+    - ENHANCER:
+        Description: Audio upscaler toggle
+        Returns: "On" or "Off"
+    - SWFRTRIM:
+        Description: Subwoofer volume trim
+        Returns: Value from "-6.0" to "6.0" in 0.5 dB increments
+    - TONEBASS:
+        Description: Bass tone control adjustment
+        Returns: Value from "-6.0" to "6.0" in 0.5 dB increments
+    - TONETREBLE:
+        Description: Treble tone control adjustment
+        Returns: Value from "-6.0" to "6.0" in 0.5 dB increments
+    - YPAOVOL:
+        Description: YPAO Volume toggle
+        Returns: "Auto" or "Off"
+    - EXBASS:
+        Description: Extra bass toggle
+        Returns: "Auto" or "Off"
+    - 3DCINEMA:
+        Description: 3D Cinema toggle
+        Returns: "Auto" or "Off"
+    - ADAPTIVEDRC:
+        Description: Adaptive Dynamic Range Control toggle
+        Returns: "Auto" or "Off"
+    - DIALOGUELVL:
+        Description: Dialogue Boost Level
+        Returns: Value from 0 to 4
+    - HDMIOUT1:
+        Description: HDMI 1 enable state
+        Returns: "On" or "Off"
+    - HDMIOUT2:
+        Description: HDMI 2 enable state (or UNAVAILABLE if not applicable)
+        Returns: "On" or "Off"
+    """
     
-    Usage Instructions:
-        YamahaAPI(IP, zone)
-            IP:
-                IP Address of the Yamaha receiver
-            zone:
-                zone to get data from, defaults to 1 (main)
-        
-        UpdateData(refreshInterval)
-            refreshInterval:
-                delay between requesting and reading data, defaults to 0.1 seconds (has hard cap at 0.025 to prevent errors)
-        
-        GetData(request, defaultString)
-            request:
-                string specifying data being requested (see list of requestable data)
-            defaultString:
-                string to return if data isn't found, defaults to empty string ("")
-        
-        LastChangeTimestamp(): returns timestamp of whenever last song or input was changed
-        
-    List of requestable data (case insensitive):
-        Any zone:
-            INP:
-                Current input
-            INPNAME:
-                Current input name
-                
-            ZONENAME:
-                Current zone name
-            
-            PWR:
-                Power state of zone - returns "On" or "Off"
-            SLEEP:
-                Sleep timer - returns "Off", "120", "90", "60", or "30" in minutes
-            VOL:
-                Current zone volume - returns in dB from -80.5 to 16.5
-            MUTE:
-                Mute status - returns "On" or "Off"
-            
-        Main zone:
-            SONG:
-                Song Name
-            ARTIST:
-                Artist Name
-            ALBUM:
-                Album Name
-            STATION:
-                Net Radio Station
-            BAND:
-                Tuner band - returns "FM" or "AM"
-            FMFREQ:
-                FM Radio Frequency - returns in the format of "104.70" in MHz
-            AMFREQ:
-                AM Radio Frequency - returns in the format of "1130" in kHz
-            PLAYBACKINFO:
-                Playback status - returns "Play" or "Stop"
-        
-            MODELNAME:
-                The model number - eg. "TSR-7790" or "RX-A820"
-            
-            SOUNDPRG:
-                Sound program - returns the current sound program, eg. 7ch Stereo
-            STRAIGHT:
-                Sound program bypass toggle - returns "On" or "Off"
-            PUREDIRMODE:
-                Pure direct mode - returns "On" or "Off"
-            
-            PARTY:
-                Party mode toggle - returns "On" or "Off"
-            ENHANCER:
-                Audio upscaler toggle - returns "On" or "Off"
-            SWFRTRIM:
-                Subwoofer volume trim - returns anywhere from "-6.0" to "6.0" in 0.5 dB increments
-            TONEBASS:
-                Bass tone control adjustment - returns anywhere from "-6.0" to "6.0" in 0.5 dB increments
-            TONETREBLE:
-                Treble tone control adjustment - returns anywhere from "-6.0" to "6.0" in 0.5 dB increments
-            
-            YPAOVOL:
-                YPAO Volume toggle - returns "Auto" or "Off"
-            EXBASS:
-                Extra bass toggle - returns "Auto" or "Off"
-            3DCINEMA:
-                3D Cinema toggle - returns "Auto" or "Off"
-            ADAPTIVEDRC:
-                Adaptive Dynamic Range Control toggle - returns "Auto" or "Off"
-            DIALOGUELVL:
-                Dialogue Boost Level - returns 0 - 4
-            
-            HDMIOUT1:
-                HDMI 1 enable state - returns "On" or "Off"
-            HDMIOUT2:
-                HDMI 2 enable state - returns "On" or "Off" (or UNAVAILABLE if the receiver doesn't have a second HDMI output)
-    """
-    defaultInput = "SERVER"
-        
     def __init__(self, ip, zone = 1):
-        self.tcpSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #create a TCP socket
-        self.tcpSocket.connect((ip,50000)) #connect to it
+        """
+        Initializes the YamahaAPI object.
+
+        Args:
+            ip (str): IP address of the Yamaha receiver.
+            zone (int, optional): Zone number of the receiver. Defaults to 1 (MAIN zone).
+        """
+        self.tcpSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create a TCP socket.
+        self.tcpSocket.connect((ip, 50000))  # Connect to the Yamaha receiver at the given IP and port 50000.
         
-        self.volatileDataDictionary = {} #this dictionary will keep being cleared
-        self.dataDictionary = {'INP': YamahaAPI.defaultInput} #this dictionary will only be cleared under new actions (eg. playing a new song, changing inputs, etc)
+        self.volatileDataDictionary = {}  # Temporary data storage.
+        self.dataDictionary = {'INP': defaultInput}  # Persistent data storage.
         
-        self.lastChangeTimestamp = time.time() #this is the timestamp for when the last new action was performed
-        
-        match zone: #this is for multizone receivers and getting data from other zones
+        self.lastChangeTimestamp = time.time()  # Timestamp of the last significant data change.
+
+        # Determine the zone based on the provided zone number.
+        match zone:
             case 1:
                 self.zone = "MAIN"
             case 2:
@@ -143,11 +156,23 @@ class YamahaAPI:
                 self.zone = "ZONE3"
             case 4:
                 self.zone = "ZONE4"
-            case _:
+            case _:  # Default case.
                 self.zone = "MAIN"
-        
+    
     def UpdateData(self, refreshInterval = 0.1):
-        match self.dataDictionary.get('INP'): #this resolves the receiver's returned input name to some internal names required for data requests
+        """
+        Updates the data from the receiver based on the current input and zone.
+
+        Args:
+            refreshInterval (float, optional): Time interval for refreshing data, in seconds. 
+                                               Defaults to 0.1.
+
+        Note:
+            This method sends requests to the receiver and processes the responses to update
+            internal data dictionaries. It handles different input types and zones.
+        """
+        # Resolve the receiver's input name to internal names.
+        match self.dataDictionary.get('INP'):
             case "Rhapsody":
                 curInput = "RHAP"
             case "TUNER":
@@ -156,83 +181,76 @@ class YamahaAPI:
                 curInput = "NETRADIO"
             case "Bluetooth":
                 curInput = "BT"
-            case _:
+            case _:  # Default case.
                 curInput = self.dataDictionary.get('INP').upper()
         
-        if refreshInterval <= 0.025: #sets the cap on refresh rate
-            requestDelay = 0.025
-        else:
-            requestDelay = refreshInterval
-        
+        # Cap the refresh rate.
+        requestDelay = max(0.025, refreshInterval)
+
+        # Building the request data string based on the current input and zone.
+        sendData = ""
         if self.zone == "MAIN":
-            if curInput == "PANDORA" or curInput == "SPOTIFY":
-                sendData = RequestFormer("source", "track", curInput) #spotify and pandora use track instead of song
+            # Different data requests for different input types.
+            if curInput in ["PANDORA", "SPOTIFY"]:
+                sendData += RequestFormer("source", "track", curInput)
             elif curInput == "TUN":
-                sendData = RequestFormer("source", "band", curInput)
+                sendData += RequestFormer("source", "band", curInput)
                 sendData += RequestFormer("source", "fmfreq", curInput)
                 sendData += RequestFormer("source", "amfreq", curInput)
             elif curInput == "NETRADIO":
-                sendData = RequestFormer("source", "song", curInput)
+                sendData += RequestFormer("source", "song", curInput)
                 sendData += RequestFormer("source", "station", curInput)
             else:
-                sendData = RequestFormer("source", "song", curInput)
+                sendData += RequestFormer("source", "song", curInput)
             sendData += RequestFormer("source", "artist", curInput)
             sendData += RequestFormer("source", "album", curInput)
             sendData += RequestFormer("source", "soundprg", curInput)
             sendData += RequestFormer("source", "playbackinfo", curInput)
-            
             sendData += RequestFormer("system", "modelname")
             sendData += RequestFormer("system", "party")
-            
-            sendData += RequestFormer("zone", "basic") #this gives a lot of fairly useless but nice data
+            sendData += RequestFormer("zone", "basic")
             sendData += RequestFormer("zone", "zonename")
-            if re.match(r'^(HDMI|AV|PHONO|AUDIO|VAUX|AUDIO|USB)', curInput): #eg. if the input is HDMI 1, request the full input name (Apple TV, Switch, etc.)
-                sendData += RequestFormer("system", str("inpname" + curInput))
-                
-            self.tcpSocket.send(sendData.encode()) #send the full request
-            
-            time.sleep(requestDelay) #wait for the request to process and be sent back
-            
-            receivedData = self.tcpSocket.recv(8192).decode() #read the data
+            if re.match(r'^(HDMI|AV|PHONO|AUDIO|VAUX|AUDIO|USB)', curInput):
+                sendData += RequestFormer("system", f"inpname{curInput}")
         else:
-            sendData = RequestFormer("zone", "basic", zone = self.zone) #get zone data
+            # Request data for other zones.
+            sendData += RequestFormer("zone", "basic", zone = self.zone)
             sendData += RequestFormer("zone", "zonename", zone = self.zone)
             if re.match(r'^(HDMI|AV|PHONO|AUDIO|VAUX|AUDIO|USB)', curInput):
-                sendData += RequestFormer("system", str("inpname" + curInput))
+                sendData += RequestFormer("system", f"inpname{curInput}")
 
-            self.tcpSocket.send(sendData.encode())
-            
-            time.sleep(requestDelay)
-            
-            receivedData = self.tcpSocket.recv(8192).decode()
-        
-        #this dictionary is things that need to be stripped out of the final strings
+        # Send the request and wait for the response.
+        self.tcpSocket.send(sendData.encode())
+        time.sleep(requestDelay)
+        receivedData = self.tcpSocket.recv(8192).decode()  # Receive the data (up to 8192 bytes).
+
+        # Dictionary of string replacements for cleaning up the received data.
         stringFixes = {
             "\r": "",
             "MAIN:": "",
             "SYS:": "",
-            str(curInput + ":"): "",
-            str(self.zone + ":"): ""
+            f"{curInput}:": "",
+            f"{self.zone}:": ""
         }
         
-        #perform the replacing using the stringFixes dictionary
+        # Apply string replacements.
         for old, new in stringFixes.items():
             receivedData = receivedData.replace(old, new)
         
-        #split on newlines, remove last item as it's always empty
+        # Split the received data by newline characters.
         splitData = receivedData.split("\n")[0:-1]
         
-        #clear the working dictionary
+        # Clear the temporary data dictionary.
         self.volatileDataDictionary.clear()
         
-        for item in splitData: #for each item in the split data
-            if item.startswith("@"): #if it starts with @ (to prevent corrupt data from being added to the dictionary)
-                if item.count("=") >= 1: #if it has an = (to prevent corrupt data from being added to the dictionary)
-                    #strip the '@', split on the first '=', make it into a tuple (x,y), put that tuple in a list, convert that to a dictionary, ie {x:y}
-                    #and then finally put that into the working dictionary
-                    self.volatileDataDictionary.update(dict([tuple(item.replace("@", "", 1).split("=", 1))])) 
+        # Process each item in the split data.
+        for item in splitData:
+            if item.startswith("@") and item.count("=") >= 1:
+                # Update the temporary dictionary with the new data.
+                key, value = item.replace("@", "", 1).split("=", 1)
+                self.volatileDataDictionary[key] = value
         
-        #this gathers all possible values that should be watched for whether to mark a new action
+        # Check for significant changes to update the data dictionary and timestamp.
         curSong = self.volatileDataDictionary.get("SONG")
         prevSong = self.dataDictionary.get("SONG")
         curPlaybackStatus = self.volatileDataDictionary.get("PLAYBACKINFO")
@@ -242,33 +260,54 @@ class YamahaAPI:
         curElapsedTime = TimeStringToInt(self.volatileDataDictionary.get("ELAPSEDTIME"))
         prevElapsedTime = TimeStringToInt(self.dataDictionary.get("ELAPSEDTIME"))
         
-        #the curElapsedTime being greater than 0 but less than previous elapsed time is to ensure that time has actually passed
         if curSong != prevSong or curPlaybackStatus != prevPlaybackStatus or curInput != prevInput or (curElapsedTime > 0 and curElapsedTime < prevElapsedTime):
-            self.dataDictionary.clear() #clear the cache dictionary
-            self.lastChangeTimestamp = time.time() #update the timestamp
+            self.dataDictionary.clear()
+            self.lastChangeTimestamp = time.time()
         
-        for item in self.volatileDataDictionary: #for every item in the live dictionary
-            if len(self.volatileDataDictionary.get(item)) > 0: #if the item is longer than 0 (to prevent empty values from being added)
-                self.dataDictionary.update({item: self.volatileDataDictionary.get(item)}) #add the item to the cache dictionary
-        
+        # Update the permanent data dictionary with new data.
+        for item in self.volatileDataDictionary:
+            if len(self.volatileDataDictionary.get(item, "")) > 0:
+                self.dataDictionary[item] = self.volatileDataDictionary[item]
+    
     def GetData(self, request, defaultString = ""):
-        curInput = self.dataDictionary.get("INP", "") #get the current input
-        curInputName = self.dataDictionary.get(str("INPNAME" + self.dataDictionary.get("INP")), "") #get the advanced input name (if possible)
+        """
+        Retrieves specific data based on the given request.
+
+        Args:
+            request (str): The data item to request (e.g., 'SONG', 'ARTIST'). See main class docstring for possible data.
+            defaultString (str, optional): Default return value if the requested data is not found. 
+                                           Defaults to an empty string.
+
+        Returns:
+            str: The requested data value, or the defaultString if not found.
+        """
+        curInput = self.dataDictionary.get("INP", "")
+        curInputName = self.dataDictionary.get(f"INPNAME{self.dataDictionary.get('INP')}", "")
         
+        # Handling special cases for Pandora and Spotify.
         if request.lower() == "song":
-            if curInput == "PANDORA" or curInput == "SPOTIFY": #compensate for pandora and spotify being quirky and unique
+            if curInput in ["PANDORA", "SPOTIFY"]:
                 return self.dataDictionary.get("TRACK", defaultString)
             else:
                 return self.dataDictionary.get("SONG", defaultString)
         
-        elif request.lower() == "inpname": #if requesting the input name...
-            if curInputName == "": #and there is no special input name...
-                return curInput #return the default input name
-            else:
-                return curInputName #otherwise, return the custom name
+        # Returning the input name, either default or custom.
+        elif request.lower() == "inpname":
+            return curInputName if curInputName else curInput
         
+        # Default case for other data requests.
         else:
-            return self.dataDictionary.get(request.upper(), defaultString) #otherwise, return the normal value requested
+            return self.dataDictionary.get(request.upper(), defaultString)
     
+    # Returns the timestamp of the last significant change.
     def LastChangeTimestamp(self):
+        """
+        Returns the timestamp of the last significant change in data.
+
+        Returns:
+            float: Timestamp of the last significant change.
+            
+        Note:
+            Events that trigger a new timestamp are song starting, input changing, and playback stopping.
+        """
         return self.lastChangeTimestamp

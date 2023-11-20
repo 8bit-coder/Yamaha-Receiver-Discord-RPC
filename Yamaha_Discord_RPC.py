@@ -1,33 +1,35 @@
 from pypresence import Presence
 from YamahaAPI import YamahaAPI
 
-#open the config file, read the ip from it, and close the file
+# Read the IP address of the Yamaha receiver from a configuration file.
 with open("config.txt", "r") as configFile:
     receiverIP = configFile.read()
 
-#these are the sources that support song and artist names
+# List of sources that support detailed information like song and artist names.
 detailedSources = ["Pandora", "Rhapsody", "SiriusXM", "Spotify", "AirPlay", "SERVER", "USB", "PC", "NET RADIO"]
 
-#the text to display when there is no data (to prevent pyPresence from crashing)
+# Default text to display when no data is available.
 defaultText = " - "
+mutedText = "Receiver Muted"
 
-#the button displayed under the rich presence info
+# Button configuration for the Discord Rich Presence.
 rpcButton = [{"label": "Have a Yamaha Receiver?", "url": "https://github.com/8bit-coder/Yamaha-Receiver-Discord-RPC"}]
 
-#create a Yamaha receiver object with the IP and zone
+# Create a Yamaha receiver object with the specified IP and default to zone 1.
 Receiver = YamahaAPI(receiverIP, zone=1)
 
-#connect to the discord developer application ID
+# Connect to Discord using the application ID.
 discordRPC = Presence("1035741925468291134")
 discordRPC.connect()
 
-while True: #program runs forever
-    try: #failsafe incase socket craps out
+while True:  # The main loop to keep the program running.
+    try:
+        # Update receiver data at a fixed interval.
         Receiver.UpdateData(0.25)
     except Exception as e:
         print(f"Error updating data: {e}")
 
-    #gather data
+    # Gather data from the receiver.
     currentInput = Receiver.GetData("inp", defaultText)
     currentInputName = Receiver.GetData("inpname", defaultText)
     currentModel = Receiver.GetData("modelname", defaultText)
@@ -36,28 +38,31 @@ while True: #program runs forever
     currentSoundProgram = Receiver.GetData("soundprg", defaultText)
     playbackStart = Receiver.LastChangeTimestamp()
     
-    #these three lines will be what will be sent to discord
+    # Initialize text variables for Discord Rich Presence.
     hoverText = defaultText
     firstLine = defaultText
     secondLine = defaultText
     
+    # Adjust the displayed information based on the receiver's status.
     if currentMute == "On":
-        currentSoundProgram = "Receiver Muted"
-    elif Receiver.GetData("puredirmode") == "On": #if the receiver is on pure direct mode, ignore the sound program
+        currentSoundProgram = mutedText
+    elif Receiver.GetData("puredirmode") == "On":
         currentSoundProgram = "Pure Direct Mode"
-    elif Receiver.GetData("straight") == "On": #same thing if the receiver is on straight mode
+    elif Receiver.GetData("straight") == "On":
         currentSoundProgram = "DSP Passthrough"
     
-    if currentInput in detailedSources: #if the source supports it, display song and artist title
+    # Handle detailed source information for Discord display.
+    if currentInput in detailedSources:
         currentSong = Receiver.GetData("song", defaultText)
         currentArtist = Receiver.GetData("artist", defaultText)
         playingStatus = Receiver.GetData("playbackinfo", defaultText)
         
-        if playingStatus == "Stop": #if the source is stopped
+        # Determine the text to display based on playback status and source details.
+        if playingStatus == "Stop":
             hoverText = f'{currentModel}: {currentVolume}dB'
             firstLine = f'{currentInput}'
             secondLine = f'Playback Stopped'
-        elif currentMute == "On": #if the source is playing but is muted
+        elif currentMute == "On":
             hoverText = f'{currentModel}: {currentInput} {currentVolume}dB'
             firstLine = f'Receiver Muted'
             secondLine = f'{defaultText}'
@@ -65,18 +70,21 @@ while True: #program runs forever
             hoverText = f'{currentModel}: {currentInput} {currentVolume}dB'
             firstLine = f'{currentSong}'
             
-            if currentInput == "NET RADIO": #if the source is net radio, second line should be station since no artist is reported
+            #If the source is Net Radio, display the Station as the second line.
+            if currentInput == "NET RADIO": 
                 currentStation = Receiver.GetData("station", defaultText)
                 secondLine = f'{currentStation}'
             else:
                 secondLine = f'{currentArtist}'
     
-    elif currentInputName != currentInput: #if there is a custom input name
+    # Handle custom input names.
+    elif currentInputName != currentInput:
         hoverText = f'{currentModel}: {currentVolume}dB'
         firstLine = f'{currentInput} - {currentInputName}'
         secondLine = f'{currentSoundProgram}'
     
-    elif currentInputName == "TUNER": #if the radio tuner is being used
+    # Handle radio tuner information.
+    elif currentInputName == "TUNER":
         currentTunerBand = Receiver.GetData("band", defaultText)
 
         hoverText = f'{currentModel}: {currentVolume}dB'
@@ -84,24 +92,35 @@ while True: #program runs forever
         if currentTunerBand.upper() == "AM":
             firstLine = f'AM Radio'
             
+            # Check if the receiver reports something other than numbers
             try:
                 secondLine = f'{float(Receiver.GetData("amfreq")):0.0f} kHz'
-            except ValueError: #this is if the receiver reports something other than numbers
+            except ValueError:
                 secondLine = f'Unknown Frequency' 
         elif currentTunerBand.upper() == "FM":
             firstLine = f'FM Radio'
             
+            # Check if the receiver reports something other than numbers
             try:
                 secondLine = f'{float(Receiver.GetData("fmfreq")):0.1f} MHz'
-            except ValueError: #once again, this is if the receiver reports something other than numbers
-                secondLine = f'Unknown Frequency' 
-        else: #failsafes incase the receiver doesn't even report the band
+            except ValueError:
+                secondLine = f'Unknown Frequency'
+        # In case the receiver reports nothing
+        else:
             firstLine = f'{currentInput}' 
             secondLine = f'{currentSoundProgram}'
     else:
+        # Default display when no specific conditions are met.
         hoverText = f'{currentModel}: {currentVolume}dB'
         firstLine = f'{currentInput}'
         secondLine = f'{currentSoundProgram}'
     
-    #finally, send the data over to discord
-    discordRPC.update(large_image="yamaha-logo-light", large_text=hoverText, details=firstLine, state=secondLine, start=playbackStart, buttons=rpcButton)
+    # Update the Discord Rich Presence with the gathered information.
+    discordRPC.update(
+        large_image="yamaha-logo-light", 
+        large_text=hoverText, 
+        details=firstLine, 
+        state=secondLine, 
+        start=playbackStart, 
+        buttons=rpcButton
+    )
